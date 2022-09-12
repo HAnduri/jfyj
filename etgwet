@@ -1,0 +1,94 @@
+import pandas as pd
+import utils
+from datetime import datetime as dt
+import logging
+import numpy as np
+import importlib
+importlib.reload(utils)
+import re
+
+def main():
+    conn,cursor = utils.create_connection()
+    dim_sql_query = '''select * from [BCMPWMT].[OFFR]'''
+    dim_offer_quary = pd.read_sql(dim_sql_query,conn)
+    
+    
+    dim_offer_quary['OFFER_PK']=dim_offer_quary['OFFER_PK'].replace('NULL','N/A').fillna('N/A').astype(str)
+    dim_offer_quary['CATLG_ITEM_ID'] = dim_offer_quary['CATLG_ITEM_ID'].replace('NULL',101).fillna(101).astype('int64')
+    dim_offer_quary['SRC_ORG_CD'] = dim_offer_quary['SRC_ORG_CD'].replace('NULL',101).fillna(101).astype('int64')
+    dim_offer_quary['TENANT_ORG_ID'] = dim_offer_quary['TENANT_ORG_ID'].replace('NULL',101).fillna(101).astype('int64')
+    dim_offer_quary['SRC_ITEM_KEY'] = dim_offer_quary['SRC_ITEM_KEY'].replace('NULL',101).fillna(101).astype('int64')
+    dim_offer_quary['UPC']=dim_offer_quary['UPC'].replace('NULL','N/A').str.strip().astype(str)
+    dim_offer_quary['WM_ITEM_NUM']=dim_offer_quary['WM_ITEM_NUM'].replace('NULL',101).astype('int64')
+    dim_offer_quary['WM_UPC']=dim_offer_quary['WM_UPC'].replace('NULL','N/A').str.strip().astype(str)
+    dim_offer_quary['OFFR_NM']=dim_offer_quary['OFFR_NM'].replace('NULL','N/A').fillna('N/A')
+    dim_offer_quary['OFFR_START_TS']= dim_offer_quary['OFFR_START_TS'].replace('NULL','N/A').str.strip().astype(str)
+    dim_offer_quary['OFFR_START_DT']=pd.to_datetime(dim_offer_quary['OFFR_START_DT'].replace('NULL','01/01/1900'))
+    dim_offer_quary['OFFR_END_TS']=pd.to_datetime(dim_offer_quary['OFFR_END_TS'],errors='coerce').replace('NULL','01/01/1900').fillna('01/01/1900')
+    dim_offer_quary['OFFR_TYPE_ID']=dim_offer_quary['OFFR_TYPE_ID'].replace('NULL','N/A').fillna('N/A').str.strip().astype(str)
+    dim_offer_quary['COMM_PCT']=dim_offer_quary['COMM_PCT'].replace('NULL',101.00).astype(float)
+    dim_offer_quary['SLR_OFFR_ID']=dim_offer_quary['SLR_OFFR_ID'].replace('NULL','N/A').fillna('N/A').astype(str).str.strip()
+    dim_offer_quary['PRTNR_ID']=dim_offer_quary['PRTNR_ID'].replace('NULL','N/A').fillna('N/A').astype(str).str.strip()
+    dim_offer_quary['START_PRICE']=dim_offer_quary['START_PRICE'].apply(lambda x: 101.00 if '[A-Z]' else x).replace('NULL',101.00).fillna(101.00).astype(float)
+    dim_offer_quary['LAST_PRICE_UPD_TS']=pd.to_datetime(dim_offer_quary['LAST_PRICE_UPD_TS'].replace('NULL','01/01/1900').fillna('01/01/1900'))
+    dim_offer_quary['CURR_PRICE']=dim_offer_quary['CURR_PRICE'].apply(lambda x: 101.00 if re.match(r'(\d+/\d+/\d+)',x) else x).replace('NULL',101.00).astype(float).fillna(101.00)
+    dim_offer_quary['CURR_SUGG_PRICE']=dim_offer_quary['CURR_SUGG_PRICE'].apply(lambda x: 101.00 if re.match(r'(\d+/\d+/\d+)',x) else x).replace('NULL',101.00).astype(float).fillna(101.00)
+    dim_offer_quary['BASE_ITEM_PRICE']=dim_offer_quary['BASE_ITEM_PRICE'].apply(lambda x: 101.00 if re.match(r'(\d+/\d+/\d+)',x) else x).replace('NULL',101.00).astype(float).fillna(101.00)
+    dim_offer_quary['BASE_SUGG_PRICE']=dim_offer_quary['BASE_SUGG_PRICE'].apply(lambda x: 101.00 if re.match(r'(\d+/\d+/\d+)',x) else x).replace('NULL',101.00).astype(float).fillna(101.00)
+    dim_offer_quary['UOM']=dim_offer_quary['UOM'].replace('NULL','N/A').fillna('N/A').astype(str).str.strip()
+    dim_offer_quary['TAXABLE_IND']=dim_offer_quary['TAXABLE_IND'].replace('NULL',101).fillna(101).astype(float).astype('int64')
+    dim_offer_quary['GIFT_WRAP_IND']=dim_offer_quary['GIFT_WRAP_IND'].replace('NULL',101).fillna(101).astype('int64')
+    dim_offer_quary['SHIP_ALONE_IND']=dim_offer_quary['SHIP_ALONE_IND'].replace('NULL',101).fillna(101).astype('int64')
+    dim_offer_quary['FREE_RETURNS_IND']=dim_offer_quary['FREE_RETURNS_IND'].replace('NULL',101).fillna(101).astype('int64')
+    dim_offer_quary['SLR_UPC']=dim_offer_quary['SLR_UPC'].replace('NULL','N/A').fillna('N/A').astype(str).str.strip()
+    dim_offer_quary['SHIPTOSTORE_IND']=dim_offer_quary['SHIPTOSTORE_IND'].apply(lambda x: 101 if re.match(r'([A-Z])',x) else x).replace('NULL',101).fillna(101).astype('int64')
+    dim_offer_quary['PIP_IND']=dim_offer_quary['PIP_IND'].replace('NULL',101).fillna(101).astype('int64')
+    dim_offer_quary['PRE_ORDER_IND']=dim_offer_quary['PRE_ORDER_IND'].replace('NULL',101).fillna(101).astype('int64')
+    dim_offer_quary['CRE_DT']=pd.to_datetime(dim_offer_quary['CRE_DT'].replace('0','01/01/1900').replace('NULL','01/01/1900').fillna('01/01/1900')).dt.date
+    dim_offer_quary['UPD_TS']=pd.to_datetime(dim_offer_quary['UPD_TS'],errors='coerce').replace('NULL','01/01/1900').fillna('01/01/1900')
+    #dim_offer_quary['GIFT_WRAP_IND']=dim_offer_quary['GIFT_WRAP_IND'].replace('NULL',101).fillna(101).astype(int)
+    
+    
+    
+   
+    
+
+    cleaned_df=utils.null_handling(dim_offer_quary)
+    
+    prod_df = pd.read_sql('select * from STG_DIM_PROD_PYTHON_IN1548',conn)
+    
+    merge_df = pd.merge(cleaned_df,prod_df,on='CATLG_ITEM_ID',how='left')
+    offer_df = merge_df[['OFFER_PK','CATLG_ITEM_ID','SRC_ORG_CD', 'TENANT_ORG_ID',
+           'SRC_ITEM_KEY', 'UPC', 'WM_ITEM_NUM', 'WM_UPC', 'OFFR_NM',
+           'OFFR_START_TS', 'OFFR_START_DT', 'OFFR_END_TS', 'OFFR_TYPE_ID',
+           'COMM_PCT', 'SLR_OFFR_ID', 'PRTNR_ID', 'START_PRICE',
+           'LAST_PRICE_UPD_TS', 'CURR_PRICE', 'CURR_SUGG_PRICE', 'BASE_ITEM_PRICE',
+           'BASE_SUGG_PRICE', 'UOM', 'TAXABLE_IND', 'GIFT_WRAP_IND',
+           'SHIP_ALONE_IND', 'FREE_RETURNS_IND', 'SLR_UPC', 'SHIPTOSTORE_IND',
+           'PIP_IND', 'PRE_ORDER_IND', 'CRE_DT_x','UPD_TS_x','PROD_KEY']]
+    offer_df['PROD_KEY']= offer_df['PROD_KEY'].replace(np.NaN,-1).astype(int)
+
+    truncate_table ='''truncate table STG_DIM_OFFER_PYTHON_IN1548'''
+    conn.execute(truncate_table)
+    conn.commit()
+
+    cursor.fast_executemany = True
+    insert_to_tmp_tbl_stmt='''INSERT INTO STG_DIM_OFFER_PYTHON_IN1548 values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'''
+    collist =['OFFER_PK','CATLG_ITEM_ID','SRC_ORG_CD', 'TENANT_ORG_ID',
+           'SRC_ITEM_KEY', 'UPC', 'WM_ITEM_NUM', 'WM_UPC', 'OFFR_NM',
+           'OFFR_START_TS', 'OFFR_START_DT', 'OFFR_END_TS', 'OFFR_TYPE_ID',
+           'COMM_PCT', 'SLR_OFFR_ID', 'PRTNR_ID', 'START_PRICE',
+           'LAST_PRICE_UPD_TS', 'CURR_PRICE', 'CURR_SUGG_PRICE', 'BASE_ITEM_PRICE',
+           'BASE_SUGG_PRICE', 'UOM', 'TAXABLE_IND', 'GIFT_WRAP_IND',
+           'SHIP_ALONE_IND', 'FREE_RETURNS_IND', 'SLR_UPC', 'SHIPTOSTORE_IND',
+           'PIP_IND', 'PRE_ORDER_IND', 'CRE_DT_x','UPD_TS_x','PROD_KEY']
+    cursor.executemany(insert_to_tmp_tbl_stmt, offer_df[collist].values.tolist())
+  
+    conn.commit()
+             
+    
+    cursor.execute('insert into STG_DIM_OFFER_PYTHON_IN1548 select OFFER_PK,CATLG_ITEM_ID,SRC_ORG_CD, TENANT_ORG_ID,SRC_ITEM_KEY, UPC, WM_ITEM_NUM, WM_UPC, OFFR_NM, OFFR_START_TS, OFFR_START_DT, OFFR_END_TS, OFFR_TYPE_ID,COMM_PCT, SLR_OFFR_ID, PRTNR_ID, START_PRICE,LAST_PRICE_UPD_TS, CURR_PRICE, CURR_SUGG_PRICE, BASE_ITEM_PRICE,BASE_SUGG_PRICE, UOM, TAXABLE_IND, GIFT_WRAP_IND,SHIP_ALONE_IND, FREE_RETURNS_IND, SLR_UPC, SHIPTOSTORE_IND, PIP_IND, PRE_ORDER_IND,CRE_DT,UPD_TS,PROD_KEY from DIM_OFFER_PYTHON_IN1548')
+    conn.commit()
+
+
+
